@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Orçamento</title>
+    <title>Meu Orçamento Pessoal</title>
 
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,7 +21,7 @@
     <!-- Menu Lateral (Sidenav) -->
     <div id="mySidenav" class="sidenav">
         <div class="sidenav-header">
-            <h1>Meu Orçamento</h1>
+            <h1>Meu Orçamento Pessoal</h1>
             <a href="javascript:void(0)" class="close-btn" id="closeNavBtn" title="Fechar Menu">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -234,10 +234,10 @@
                 
                 <dt>Aplicar a todos os meses (IMPORTANTE):</dt>
                 <dd>
-                    Esta opção define como suas edições são salvas:
-                    <ul>
-                        <li style="list-style-type: disc; margin-left: 20px;"><strong>Desmarcada:</strong> Qualquer alteração (adicionar, editar ou remover uma receita/categoria) será aplicada <strong>apenas ao mês selecionado</strong>.</li>
-                        <li style="list-style-type: disc; margin-left: 20px;"><strong>Marcada:</strong> Qualquer alteração que você fizer será **replicada para todos os 12 meses do ano**. Use esta opção para padronizar seu orçamento anual de uma só vez.</li>
+                    Esta opção define como suas edições são salvas. Use-a com atenção:
+                    <ul class="explanation-list">
+                        <li><strong>Desmarcada:</strong> As alterações (adicionar, editar, remover) afetam <strong>apenas o mês que você está vendo</strong>.</li>
+                        <li><strong>Marcada:</strong> As alterações são **replicadas instantaneamente para todos os 12 meses do ano**, mantendo seu orçamento padronizado.</li>
                     </ul>
                 </dd>
 
