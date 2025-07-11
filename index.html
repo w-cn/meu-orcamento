@@ -1,1 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Orçamento</title>
+
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/intro.js/intro.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css">
+
+    <!-- Arquivos Locais -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Menu Lateral (Sidenav) -->
+    <div id="mySidenav" class="sidenav">
+        <div class="sidenav-header">
+            <h1>Meu Orçamento</h1>
+            <a href="javascript:void(0)" class="close-btn" id="closeNavBtn" title="Fechar Menu">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </a>
+        </div>
+        <a href="#" class="tab-link" data-tab="tabContas">Lançar Despesas</a>
+        <a href="#" class="tab-link" data-tab="tabOrcamento">Orçamento</a>
+        <a href="#" class="tab-link" data-tab="tabRelatorio">Relatório</a>
+        <a href="#" class="tab-link" data-tab="tabGraficos">Gráficos</a>
+        <a href="#" class="tab-link" data-tab="tabConfig">Configurações</a>
+        <a href="#" id="howToUseBtn">Como Usar</a>
+    </div>
+    <div id="overlay" class="overlay"></div>
+
+    <!-- Container Principal da Aplicação -->
+    <div class="container">
+        <div class="main-content">
+            <div class="header-container">
+                <span class="open-btn" id="openNavBtn" data-intro="Bem-vindo! Clique aqui para abrir o menu de navegação a qualquer momento.">☰</span>
+                <h1>Lançar Despesas</h1>
+                <span class="header-placeholder"></span>
+            </div>
+
+            <!-- Conteúdo da Aba 1: Lançar Despesas -->
+            <div id="tabContas" class="tab-content">
+                <div id="globalStatusPanel" class="card" style="display: none;"></div>
+                <div id="statusPanel" class="card">Carregando status...</div>
+                <div class="expense-controls">
+                    <div class="main-filters">
+                        <div id="categoryFilterContainer"></div>
+                    </div>
+                    <div class="view-options">
+                        <button id="view-toggle-btn" class="view-toggle-btn" title="Alternar Visualização">☰</button>
+                        <div id="showAllMonthsContainer">
+                            <label><input type="checkbox" id="showAllMonths"> Mostrar todos os meses</label>
+                        </div>
+                    </div>
+                </div>
+                <h2 id="currentMonthHeader" style="display: none;"></h2>
+                <div id="expenseGridView">
+                    <div class="table-responsive-wrapper">
+                        <table id="expensesTable">
+                            <thead id="expensesHeader"></thead>
+                            <tbody id="expensesBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="expenseListView"></div>
+                <div class="button-container" id="add-expense-list-view-container" style="display: none;">
+                    <button id="addExpenseItemBtnList">+ Adicionar Despesa</button>
+                </div>
+            </div>
+
+            <!-- Conteúdo da Aba 2: Orçamento -->
+            <div id="tabOrcamento" class="tab-content">
+                <div class="budget-controls-wrapper">
+                    <div class="date-selectors">
+                        <label for="yearSelectorBudget">Ano:</label>
+                        <select id="yearSelectorBudget"></select>
+                        <label for="monthSelector">Mês:</label>
+                        <select id="monthSelector"></select>
+                    </div>
+                    <div>
+                        <label><input type="checkbox" id="applyToAllMonthsBudget"> Aplicar a todos os meses</label>
+                    </div>
+                </div>
+                <hr>
+                <h2>Receitas</h2>
+                <table id="incomeTable">
+                    <thead>
+                        <tr>
+                            <th>Fonte de Renda</th>
+                            <th>Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="button-container"><button id="addIncomeSourceBtn">+ Adicionar Receita</button></div>
+                <h2>Divisão do Orçamento (Categorias)</h2>
+                <table id="budgetTable">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>%</th>
+                            <th>Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="budgetBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total</td>
+                            <td id="totalPercentage"></td>
+                            <td id="totalMonth"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="button-container"><button id="addBudgetCategoryBtn">+ Adicionar Categoria</button></div>
+
+                <div id="goalSection">
+                    <h2>Minha Meta Financeira</h2>
+                    <div class="form-grid">
+                        <div>
+                            <label for="goalName">Nome da Meta:</label>
+                            <input type="text" id="goalName" placeholder="Ex: Viagem para a Europa">
+                        </div>
+                        <div>
+                            <label for="goalAmount">Valor Total (R$):</label>
+                            <input type="number" id="goalAmount" placeholder="20000">
+                        </div>
+                        <div>
+                            <label for="goalDeadline">Prazo (em meses):</label>
+                            <input type="number" id="goalDeadline" placeholder="24">
+                        </div>
+                    </div>
+                    <div id="goalResult" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Conteúdo da Aba 3: Relatório -->
+            <div id="tabRelatorio" class="tab-content">
+                <div class="controls-container" style="justify-content: center; flex-wrap: wrap; gap: 15px;">
+                    <label for="yearSelectorReport">Ano:</label> 
+                    <select id="yearSelectorReport"></select>
+                    
+                    <label for="reportViewSelector">Visão:</label>
+                    <select id="reportViewSelector">
+                            <option value="byCategory">Por Categoria</option>
+                            <option value="general">Geral de Despesas</option>
+                    </select>
+                </div>
+                <h2 id="reportYearTitle"></h2>
+                <div id="annual-summary-box" class="card"></div>
+                <div id="reportContainer"></div>
+            </div>
+
+            <!-- Conteúdo da Aba 4: Gráficos -->
+            <div id="tabGraficos" class="tab-content">
+                <div id="chartControlsContainer" class="controls-container"
+                    style="justify-content: center; flex-wrap: wrap; gap: 15px;">
+                    <label for="yearSelectorChart">Ano:</label>
+                    <select id="yearSelectorChart"></select>
+
+                    <label for="chartPeriodSelector">Período:</label>
+                    <select id="chartPeriodSelector"></select>
+
+                    <label for="chartCategorySelector">Orçamento:</label>
+                    <select id="chartCategorySelector"></select>
+                    
+                    <fieldset>
+                        <legend class="sr-only">Tipo de Gráfico</legend>
+                        <input type="radio" id="pieChart" name="chartType" value="pie" checked> <label for="pieChart">Pizza</label> 
+                        <input type="radio" id="barChart" name="chartType" value="bar"> <label for="barChart">Barras</label>
+                    </fieldset>
+                </div>
+                <div id="chartContainer">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div id="chart-legend" class="custom-chart-legend"></div>
+            </div>
+
+            <!-- Conteúdo da Aba 5: Configurações -->
+            <div id="tabConfig" class="tab-content">
+                <h2>Gerenciamento de Dados</h2>
+                <p style="text-align: center; max-width: 600px; margin: 0 auto 30px; color: #6c757d;">Use as opções
+                    abaixo para importar, exportar ou apagar todos os seus dados do aplicativo.</p>
+                <div class="button-container">
+                    <button id="importBtn" style="background-color: var(--info-color);">Importar / Modelo</button>
+                    <button id="exportBtn" style="background-color: var(--primary-color);">Exportar Dados</button>
+                    <button id="resetBtn" style="background-color: var(--danger-color);">Resetar Dados</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-credit">by: Wendel Carvalho</div>
+    </div>
+
+    <!-- Modal de Importação -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" data-modal-id="importModal">×</span>
+            <h3>Importar Dados</h3>
+            <p>Use o modelo para garantir que os dados sejam importados corretamente.</p>
+            <button id="downloadTemplateBtn">1. Baixar Modelo</button>
+            <hr style="margin: 20px 0;">
+            <label for="importFile" style="font-weight: bold;">2. Selecionar arquivo:</label>
+            <input type="file" id="importFile" accept=".xlsx, .xls" style="margin-top: 10px;">
+            <div class="button-container" style="justify-content: flex-end;">
+                <button id="importFromExcelBtn" style="background-color: var(--primary-color);">Importar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal "Como Usar" -->
+    <div id="howToUseModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" data-modal-id="howToUseModal">×</span>
+            <h2 style="margin-top:0;">Como Usar o Aplicativo</h2>
+
+            <h3>Navegação Principal</h3>
+            <p>Clique no ícone ☰ no canto superior esquerdo para abrir o menu e navegar entre as seções. O título principal sempre mostrará em qual seção você está.</p>
+
+            <h3>1. Orçamento (O Primeiro Passo)</h3>
+            <p>Esta é a seção mais importante para começar. Configure aqui suas fontes de renda e como você planeja gastar seu dinheiro.</p>
+            <dl>
+                <dt>Receitas e Categorias:</dt>
+                <dd>Adicione suas fontes de renda (Salário, extras, etc.) e crie suas categorias de gastos (Gasto Fixo, Lazer, Investimentos). Defina a porcentagem (%) que cada categoria representa no seu orçamento.</dd>
+                
+                <dt>Aplicar a todos os meses (IMPORTANTE):</dt>
+                <dd>
+                    Esta opção define como suas edições são salvas:
+                    <ul>
+                        <li style="list-style-type: disc; margin-left: 20px;"><strong>Desmarcada:</strong> Qualquer alteração (adicionar, editar ou remover uma receita/categoria) será aplicada <strong>apenas ao mês selecionado</strong>.</li>
+                        <li style="list-style-type: disc; margin-left: 20px;"><strong>Marcada:</strong> Qualquer alteração que você fizer será **replicada para todos os 12 meses do ano**. Use esta opção para padronizar seu orçamento anual de uma só vez.</li>
+                    </ul>
+                </dd>
+
+                <dt>Metas Financeiras:</dt>
+                <dd>Defina um objetivo, o valor total e o prazo em meses. O sistema calculará automaticamente quanto você precisa economizar por mês para atingir sua meta.</dd>
+            </dl>
+
+            <h3>2. Lançar Despesas</h3>
+            <p>Esta é a tela do dia a dia. O mês exibido aqui é sempre o mesmo que está selecionado na aba "Orçamento", garantindo consistência.</p>
+            <dl>
+                <dt>Visualização em Grade ou Lista:</dt>
+                <dd>Use o botão (☰/▦) para alternar a visualização. A grade é ótima para ver vários meses ao mesmo tempo (marque "Mostrar todos os meses"), enquanto a lista é ideal para o mês atual.</dd>
+                
+                <dt>Filtro de Categoria:</dt>
+                <dd>Clique no menu "Todas as Categorias" para focar em uma área específica de gastos.</dd>
+                
+                <dt>Lançamento Inteligente de Valores:</dt>
+                <dd>Clique em um campo de valor para somar ou subtrair. Se o valor atual é R$ 50,00 e você digita "20", o novo valor será R$ 70,00. Se digitar "-10", o novo valor será R$ 40,00.</dd>
+
+                <dt>Adicionar/Editar Despesas:</dt>
+                <dd>Use o botão `+` para adicionar uma nova despesa à categoria selecionada. Para renomear ou remover, passe o mouse sobre o nome do item para ver os ícones de edição (✎) e exclusão (×).</dd>
+            </dl>
+
+            <h3>3. Relatórios e Gráficos</h3>
+            <p>Acompanhe a saúde das suas finanças. Use os filtros no topo da página para analisar seus dados por ano, período e categoria.</p>
+
+            <h3>4. Configurações</h3>
+            <p>Gerencie seus dados. Você pode exportar tudo para um arquivo Excel como backup, importar dados de uma planilha (use o modelo!) ou resetar completamente o aplicativo.</p>
+        </div>
+    </div>
+
+    <!-- Modal genérico para prompts e confirmações -->
+    <div id="genericModal" class="modal">
+        <div class="modal-content">
+            <h3 id="genericModalTitle"></h3>
+            <label id="genericModalText" for="genericModalInput"></label>
+            <div id="genericModalInputContainer" style="display:none;">
+                <input type="text" id="genericModalInput" class="input-text-modal">
+            </div>
+            <div class="button-container" style="justify-content: flex-end;">
+                <button id="genericModalCancelBtn" class="btn-secondary">Cancelar</button>
+                <button id="genericModalConfirmBtn" class="btn-primary">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Ponto de entrada do JavaScript Modular -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
