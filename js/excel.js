@@ -2,6 +2,7 @@
  * @file Contém as funções de importação e exportação para Excel.
  */
 import { getAppData, saveData } from './data.js';
+import { MONTHS, LOCAL_STORAGE_KEY } from './utils.js';
 
 /**
  * Cria e baixa um arquivo Excel com a estrutura de modelo para importação.
@@ -45,6 +46,7 @@ export function importFromExcel(file) {
 
                 const ensureMonthStructure = (year, month) => {
                     if (!newAppData[year]) newAppData[year] = { months: {} };
+                    if (!MONTHS.includes(month)) return false;
                     if (!newAppData[year].months[month]) {
                         newAppData[year].months[month] = {
                             incomes: [],
@@ -53,28 +55,31 @@ export function importFromExcel(file) {
                             expenses: {}
                         };
                     }
+                    return true;
                 };
 
                 // Processa as abas
                 const wsReceitas = workbook.Sheets.Receitas;
                 if (wsReceitas) {
                     XLSX.utils.sheet_to_json(wsReceitas).forEach(r => {
-                        ensureMonthStructure(r.ANO, r.MÊS);
-                        newAppData[r.ANO].months[r.MÊS].incomes.push({
-                            name: r.FONTE_RECEITA,
-                            value: r.VALOR_RECEITA || 0
-                        });
+                        if (ensureMonthStructure(r.ANO, r.MÊS)) {
+                           newAppData[r.ANO].months[r.MÊS].incomes.push({
+                                name: r.FONTE_RECEITA,
+                                value: r.VALOR_RECEITA || 0
+                            });
+                        }
                     });
                 }
 
                 const wsOrcamento = workbook.Sheets.Orcamento_Categorias;
                 if (wsOrcamento) {
                     XLSX.utils.sheet_to_json(wsOrcamento).forEach(o => {
-                         ensureMonthStructure(o.ANO, o.MÊS);
-                        const category = o.CATEGORIA;
-                        newAppData[o.ANO].months[o.MÊS].budgets.push({ name: category, percentage: o["PORCENTAGEM_%"] || 0 });
-                        if (!newAppData[o.ANO].months[o.MÊS].items[category]) {
-                            newAppData[o.ANO].months[o.MÊS].items[category] = [];
+                        if (ensureMonthStructure(o.ANO, o.MÊS)) {
+                            const category = o.CATEGORIA;
+                            newAppData[o.ANO].months[o.MÊS].budgets.push({ name: category, percentage: o["PORCENTAGEM_%"] || 0 });
+                            if (!newAppData[o.ANO].months[o.MÊS].items[category]) {
+                                newAppData[o.ANO].months[o.MÊS].items[category] = [];
+                            }
                         }
                     });
                 }
@@ -82,17 +87,17 @@ export function importFromExcel(file) {
                 const wsDespesas = workbook.Sheets.Despesas_Realizadas;
                 if(wsDespesas){
                      XLSX.utils.sheet_to_json(wsDespesas).forEach(d => {
-                        ensureMonthStructure(d.ANO, d.MÊS);
-                        const monthData = newAppData[d.ANO].months[d.MÊS];
-                        const { CATEGORIA: category, ITEM_DESPESA: item, VALOR_GASTO: value = 0 } = d;
-                        if (!monthData.items[category]) monthData.items[category] = [];
-                        if (!monthData.items[category].includes(item)) monthData.items[category].push(item);
-                        monthData.expenses[item] = value;
+                        if (ensureMonthStructure(d.ANO, d.MÊS)) {
+                            const monthData = newAppData[d.ANO].months[d.MÊS];
+                            const { CATEGORIA: category, ITEM_DESPESA: item, VALOR_GASTO: value = 0 } = d;
+                            if (!monthData.items[category]) monthData.items[category] = [];
+                            if (!monthData.items[category].includes(item)) monthData.items[category].push(item);
+                            monthData.expenses[item] = value;
+                        }
                     });
                 }
 
-                // Substitui os dados antigos e salva
-                localStorage.setItem('financeAppVFinal21', JSON.stringify(newAppData));
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newAppData));
                 resolve(true);
 
             } catch (e) {
@@ -118,19 +123,25 @@ export function exportToExcel(year) {
     }
 
     let receitas = [], orcamento = [], despesas = [];
-    const itemToCategoryMap = {};
-     Object.values(appData[year].months).forEach(details => {
-         if(details?.items){
-            Object.entries(details.items).forEach(([category, items]) => items.forEach(item => {
-                itemToCategoryMap[item] = category;
-            }));
-         }
-     });
 
+    // 1. Crie um mapa completo de "item -> categoria" para o ano inteiro primeiro.
+    const itemToCategoryMap = {};
+    Object.values(appData[year].months).forEach(monthDetails => {
+        if (monthDetails && monthDetails.items) {
+            Object.entries(monthDetails.items).forEach(([category, items]) => {
+                items.forEach(item => {
+                    itemToCategoryMap[item] = category;
+                });
+            });
+        }
+    });
+
+    // 2. Agora, processe as despesas de cada mês usando o mapa completo.
     Object.entries(appData[year].months).forEach(([month, details]) => {
-        if(details){
+        if (details) {
             details.incomes.forEach(i => receitas.push([year, month, i.name, i.value]));
             details.budgets.forEach(b => orcamento.push([year, month, b.name, b.percentage]));
+
             Object.entries(details.expenses).forEach(([item, value]) => {
                 if (value > 0) {
                     const category = itemToCategoryMap[item] || "Não categorizado";
