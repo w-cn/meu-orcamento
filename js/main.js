@@ -41,7 +41,6 @@ function handleNavClick(event) {
             UI.clearGoalInputs();
         }
 
-        // CÓDIGO CORRIGIDO: Passa o ano para a função que abre a aba e atualiza o título.
         UI.openTab(tabName, state.year);
         UI.closeNav();
 
@@ -138,11 +137,13 @@ function handleAddExpenseItem() {
 
 
     if (categoryName === 'TODAS') {
-        const chosenCategory = prompt(`Em qual categoria deseja adicionar o novo item?\nDisponíveis: ${availableCategories.join(", ")}`, availableCategories[0] || "");
-        if (!chosenCategory || !availableCategories.includes(chosenCategory.trim())) {
-            return alert("Categoria inválida.");
-        }
-        promptForNewItemName(chosenCategory.trim());
+        // Usa o modal genérico para uma UI mais consistente
+        UI.showPromptModal('Selecionar Categoria', `Em qual categoria deseja adicionar o novo item?\nDisponíveis: ${availableCategories.join(", ")}`, availableCategories[0] || "", (chosenCategory) => {
+            if (!chosenCategory || !availableCategories.includes(chosenCategory.trim())) {
+                return alert("Categoria inválida.");
+            }
+            promptForNewItemName(chosenCategory.trim());
+        });
     } else {
         promptForNewItemName(categoryName);
     }
@@ -158,10 +159,11 @@ function promptForNewItemName(categoryName) {
         `Adicionar novo item em "${categoryName}" para o ano todo:` :
         `Adicionar novo item em "${categoryName}":`;
     
-    const newItemName = prompt(promptMessage);
-    if (!newItemName || !newItemName.trim()) return;
-    Data.addExpenseItem(state.year, categoryName, newItemName.trim(), isAllMonthsView);
-    UI.buildExpensesView(Data.getAppData(), state);
+    UI.showPromptModal('Adicionar Item', promptMessage, 'Nome do item', (newItemName) => {
+        if (!newItemName || !newItemName.trim()) return;
+        Data.addExpenseItem(state.year, categoryName, newItemName.trim(), isAllMonthsView);
+        UI.buildExpensesView(Data.getAppData(), state);
+    });
 }
 
 
@@ -211,6 +213,38 @@ function handleCategoryFilterClick(event) {
         UI.buildExpensesView(Data.getAppData(), state);
     }
 }
+
+
+// <<< INÍCIO DO CÓDIGO CORRIGIDO E ADICIONADO >>>
+
+/**
+ * Pede confirmação e remove um item de despesa.
+ * @param {string} itemName O nome do item a ser removido.
+ */
+function handleRemoveExpenseItem(itemName) {
+    UI.showConfirmationModal('Confirmar Remoção', `Você tem certeza que deseja remover o item "${itemName}" e todos os seus lançamentos para este ano?`, () => {
+        Data.removeExpenseItem(state.year, itemName);
+        UI.buildExpensesView(Data.getAppData(), state);
+        // Opcional: pode-se adicionar um 'alert' ou uma notificação mais suave aqui
+    });
+}
+
+/**
+ * Pede um novo nome e renomeia o item de despesa.
+ * @param {string} oldItemName O nome atual do item.
+ */
+function handleRenameExpenseItem(oldItemName) {
+    UI.showPromptModal('Renomear Item', `Digite o novo nome para "${oldItemName}":`, oldItemName, (newItemName) => {
+        const trimmedNewName = newItemName.trim();
+        if (!trimmedNewName || trimmedNewName === oldItemName) {
+            return; // Não faz nada se o nome for vazio ou igual ao antigo.
+        }
+        Data.renameExpenseItem(state.year, oldItemName, trimmedNewName);
+        UI.buildExpensesView(Data.getAppData(), state);
+    });
+}
+
+// <<< FIM DO CÓDIGO CORRIGIDO E ADICIONADO >>>
 
 
 // --- INICIALIZAÇÃO ---
@@ -282,6 +316,42 @@ function bindEvents() {
         }
     });
 
+    // <<< INÍCIO DO CÓDIGO CORRIGIDO E ADICIONADO >>>
+    // LISTENER DE EVENTOS PARA AÇÕES NOS ITENS DE DESPESA (EDITAR/REMOVER)
+    document.getElementById('tabContas').addEventListener('click', (event) => {
+        // Ação 1: Clicou em um botão de Renomear ou Remover.
+        const actionButton = event.target.closest('.item-action-btn');
+        if (actionButton) {
+            event.stopPropagation(); // Impede que o clique se propague e feche o menu.
+            const itemName = actionButton.dataset.itemName;
+            if (actionButton.classList.contains('rename-btn')) {
+                handleRenameExpenseItem(itemName);
+            } else if (actionButton.classList.contains('remove-btn')) {
+                handleRemoveExpenseItem(itemName);
+            }
+            return; // Encerra, pois a ação foi tratada.
+        }
+
+        // Ação 2: Clicou para abrir as opções na visualização em lista.
+        if (state.currentView === 'list') {
+            const contentWrapper = event.target.closest('.item-content-wrapper');
+            if (contentWrapper) {
+                const listItem = contentWrapper.closest('.list-view-item');
+                
+                // Fecha qualquer outro item que esteja aberto para evitar poluição visual.
+                document.querySelectorAll('.list-view-item.editing').forEach(item => {
+                    if (item !== listItem) {
+                        item.classList.remove('editing');
+                    }
+                });
+                
+                // Alterna a classe 'editing' no item clicado para mostrar/esconder os botões.
+                listItem.classList.toggle('editing');
+            }
+        }
+    });
+    // <<< FIM DO CÓDIGO CORRIGIDO E ADICIONADO >>>
+
     // Gráficos e Relatórios
     document.getElementById('chartControlsContainer').addEventListener('change', Chart.renderChart);
     document.getElementById('reportViewSelector').addEventListener('change', (e) => {
@@ -298,12 +368,12 @@ function bindEvents() {
     document.getElementById('downloadTemplateBtn').addEventListener('click', Excel.downloadExcelTemplate);
     document.getElementById('exportBtn').addEventListener('click', () => Excel.exportToExcel(state.year));
     document.getElementById('resetBtn').addEventListener('click', () => {
-        if (confirm("ATENÇÃO!\n\nVocê tem certeza que deseja resetar todos os dados?\n\nEsta ação é irreversível.")) {
-            if (Data.resetAllData()) {
+        UI.showConfirmationModal("Resetar Dados", "ATENÇÃO!\n\nVocê tem certeza que deseja apagar todos os dados?\n\nEsta ação é irreversível.", () => {
+             if (Data.resetAllData()) {
                 alert("Todos os dados foram resetados com sucesso.");
                 location.reload();
             }
-        }
+        });
     });
     document.getElementById('importFromExcelBtn').addEventListener('click', async () => {
         const fileInput = document.getElementById("importFile");
