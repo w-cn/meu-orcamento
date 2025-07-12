@@ -1,7 +1,7 @@
 /**
  * @file Contém as funções de importação e exportação para Excel.
  */
-import { getAppData, saveData } from './data.js';
+import { getAppData } from './data.js';
 import { MONTHS, LOCAL_STORAGE_KEY } from './utils.js';
 
 /**
@@ -143,7 +143,8 @@ export function exportToExcel(year) {
             details.budgets.forEach(b => orcamento.push([year, month, b.name, b.percentage]));
 
             Object.entries(details.expenses).forEach(([item, value]) => {
-                if (value > 0) {
+                // Inclui itens com valor maior ou IGUAL a zero.
+                if (value >= 0) {
                     const category = itemToCategoryMap[item] || "Não categorizado";
                     despesas.push([year, month, category, item, value]);
                 }
